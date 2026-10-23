@@ -28,6 +28,7 @@ public class playerMovement : MonoBehaviour
     public Rigidbody rb;
     public TextMeshProUGUI speedText;
     public float dashForce;
+    public float dashThresholdSpeed;
 
     
     [Header("Sliding")]
@@ -37,8 +38,14 @@ public class playerMovement : MonoBehaviour
     public bool wantToSlide;
     public bool isBoostReady;
     public float slideTimer;
-    float originalScaleY;    
+    public float slideDrag;
+    float originalScaleY;
 
+    [Header("Perfect Slide")] 
+    public GameObject slideCheckObject;
+    public float slideRayCheckDistance;
+    public float rayDistance;
+    public float slideRank;
 
     [Header("Ground Detection")]
     public LayerMask groundLayer;
@@ -82,10 +89,18 @@ public class playerMovement : MonoBehaviour
         if (context.started)
         {
             wantToSlide = true;
+            if (!isGrounded)
+            {
+                Physics.SphereCast(slideCheckObject.transform.position, 0.5f, Vector3.down, out RaycastHit hit, slideRayCheckDistance, groundLayer, QueryTriggerInteraction.Ignore);
+                rayDistance = hit.distance;
+            }
+            rb.MovePosition(orientation.transform.position + new Vector3(0f,-0.5f,0f));
         }
         if (context.canceled)
         {
             wantToSlide = false;
+            rb.MovePosition(orientation.transform.position + new Vector3(0f,0.5f,0f));
+            transform.localScale = new Vector3(transform.localScale.x, originalScaleY, transform.localScale.z);
         }
     }
 
@@ -115,7 +130,7 @@ public class playerMovement : MonoBehaviour
         {
             if (wantToSlide)
             {
-                rb.linearDamping = 0.2f;
+                rb.linearDamping = slideDrag;
                 speed = 0f;
             }
             else
@@ -158,9 +173,20 @@ public class playerMovement : MonoBehaviour
         {
             dashDirection = playerCam.transform.forward;
         }
-        rb.linearVelocity = Vector3.zero;
-        rb.linearDamping = 0;
-        rb.AddForce(dashDirection * dashForce, ForceMode.Impulse);
+
+        if (rb.linearVelocity.magnitude <= dashThresholdSpeed)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.linearDamping = 0;
+            rb.AddForce(dashDirection * dashForce, ForceMode.Impulse);
+        }
+        else
+        {
+            Vector3 tempVel = rb.linearVelocity;
+            rb.linearVelocity = Vector3.zero;
+            rb.linearDamping = 0;
+            rb.AddForce(dashDirection * tempVel.magnitude * 1.1f, ForceMode.Impulse);
+        }
         //Change it so that if your current speed is above the max dash speed
         //The dash will just redirect your velocity instead (Add extra boost? to this or nah) 
     }
@@ -181,14 +207,13 @@ public class playerMovement : MonoBehaviour
 
     void Slide()
     {
-        if(wantToSlide == false)
+        if(!wantToSlide)
         {
-            transform.localScale = new Vector3(transform.localScale.x, originalScaleY, transform.localScale.z);
             maxRayDistance = originalScaleY;
             return;
         }
-
-        if(isBoostReady == true && isGrounded && rb.linearVelocity.magnitude >= 8f)
+        
+        if(isBoostReady && isGrounded && rb.linearVelocity.magnitude >= 8f)
         {
             isBoostReady = false;
             rb.AddForce(rb.linearVelocity.normalized * slideBoostForce, ForceMode.Impulse);
@@ -203,15 +228,14 @@ public class playerMovement : MonoBehaviour
         //How it works
         //Slide at the perfect time before hitting the floor, All your momentum gets converted into the slide boost
         //Use a raycast to determine how close the player is to the floor before sliding
-
-    }
+    } 
 
     
 
 
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Start()
     {
         originalScaleY = transform.localScale.y;
         Cursor.lockState = CursorLockMode.Locked;
@@ -219,7 +243,7 @@ public class playerMovement : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         orientation.transform.rotation = Quaternion.Euler(orientation.transform.rotation.eulerAngles.x, playerCam.transform.rotation.eulerAngles.y, orientation.transform.rotation.eulerAngles.z);   
         GroundDetection();
@@ -227,13 +251,13 @@ public class playerMovement : MonoBehaviour
         Move();
         SlideCooldown();
         Slide();
-
-
+        
+        
         speedText.text = Convert.ToString(rb.linearVelocity.magnitude);
     }
 
 
-    void FixedUpdate()
+    private void FixedUpdate()
     {
 
         rb.AddForce(moveDir * speed, ForceMode.VelocityChange);
