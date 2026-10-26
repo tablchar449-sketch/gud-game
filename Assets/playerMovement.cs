@@ -15,15 +15,15 @@ using UnityEngine.Timeline;
 
 public class playerMovement : MonoBehaviour
 {
-
-    public float speed, groundSpeed, airSpeed, slideSpeed;
+    public float speed, groundSpeed, airSpeed;
     public float dragLerpAcceleration;
     public float speedLerpAcceleration;
     public float jumpHeight;
     public Camera playerCam;
     public float groundDrag, airDrag;
-
-    public GameObject cameraPosition;
+    private bool wantToJump;
+    float timeSinceLastJump;
+    public float jumpCooldown;
     public GameObject orientation;
     public Rigidbody rb;
     public TextMeshProUGUI speedText;
@@ -48,13 +48,14 @@ public class playerMovement : MonoBehaviour
     public float turnSpeed;
     public float turnAngle;
     public float minimumDrag;
+    public float slideTime;
     float originalScaleY;
 
     [Header("Perfect Slide")] 
-    public GameObject slideCheckObject;
-    public float slideRayCheckDistance;
-    public float rayDistance;
-    public float perfectSlideDistance;
+    public float perfectSlideTime;
+
+    private bool startCheck;
+    private float perfectSlideTimer;
 
     [Header("Ground Detection")]
     public LayerMask groundLayer;
@@ -68,7 +69,7 @@ public class playerMovement : MonoBehaviour
 
     Vector3 moveDir;
 
-    Vector2 moveInputDirection;
+    public Vector2 moveInputDirection;
 
 
     public void moveInputs(InputAction.CallbackContext context)
@@ -78,13 +79,13 @@ public class playerMovement : MonoBehaviour
 
     public void jumpKey(InputAction.CallbackContext context)
     {
-        if(isGrounded && context.performed)
+        if (context.performed)
         {
-            isGrounded = false;
-            rb.linearDamping = airDrag;
-            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
-            rb.AddForce(Vector3.up * jumpHeight, ForceMode.Impulse);
-
+            wantToJump = true;
+        }
+        else
+        {
+            wantToJump = false;
         }
     }
 
@@ -101,12 +102,8 @@ public class playerMovement : MonoBehaviour
         if (context.started)
         {
             wantToSlide = true;
-            if (!isGrounded)
-            {
-                Physics.SphereCast(slideCheckObject.transform.position, 0.5f, Vector3.down, out RaycastHit hit, slideRayCheckDistance + Mathf.Abs(rb.linearVelocity.y), groundLayer, QueryTriggerInteraction.Ignore);
-                rayDistance = hit.distance;
-            }
             rb.MovePosition(orientation.transform.position + new Vector3(0f,-0.5f,0f));
+            startCheck = true;
         }
         if (context.canceled)
         {
@@ -122,21 +119,33 @@ public class playerMovement : MonoBehaviour
 
 
 
-    void GroundDetection()
+
+    private void jump()
+    {
+        if (isGrounded && wantToJump && timeSinceLastJump >= jumpCooldown)
+        {
+            timeSinceLastJump = 0;
+            isGrounded = false;
+            rb.linearDamping = airDrag;
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
+            rb.AddForce(Vector3.up * jumpHeight, ForceMode.Impulse);
+        }
+    }
+    
+    private void GroundDetection()
     {
         Physics.SphereCast(orientation.transform.position, 0.5f, Vector3.down, out raycastHit,maxRayDistance, groundLayer, QueryTriggerInteraction.Ignore);
         //Physics.Raycast(orientation.transform.position, Vector3.down, out raycastHit, maxRayDistance, groundLayer, QueryTriggerInteraction.Ignore);
         if(raycastHit.collider != null)
         {
             isGrounded = true;
-            rb.useGravity = false;
         }
-        else{ isGrounded = false; rb.useGravity = true; }
+        else{ isGrounded = false; }
     
     }
 
 
-    void HandleDrag()//This is kinda sloppy. May want to change later but works for now
+    private void HandleDrag()//This is kinda sloppy. May want to change later but works for now
     {
         if (isGrounded)
         {
@@ -166,7 +175,7 @@ public class playerMovement : MonoBehaviour
         }
     }
 
-    void Move()
+    private void Move()
     {
         moveDir = orientation.transform.forward * moveInputDirection.y + orientation.transform.right * moveInputDirection.x;
         
@@ -178,7 +187,7 @@ public class playerMovement : MonoBehaviour
         }
     }
 
-    void Dash()
+    private void Dash()
     {
         //if (currentDashCharge == 0)
         //{ return; }
@@ -215,7 +224,7 @@ public class playerMovement : MonoBehaviour
     }*/
     
 
-    void SlideCooldown()
+    private void SlideCooldown()
     {
         if(slideTimer >= slideBoostCooldown)
         {
@@ -229,11 +238,47 @@ public class playerMovement : MonoBehaviour
     }
 
 
-    void Slide()
+    private void Slide()
     {
         if(!wantToSlide)
         {
-            maxRayDistance = originalScaleY; return;}
+            maxRayDistance = originalScaleY;
+            slideTime = 0;
+            perfectSlideTimer = 0;
+            startCheck = false;
+            return;
+        }
+
+        if (isGrounded)
+        {
+            startCheck = false;
+            slideTime += 1 * Time.deltaTime;
+            
+            var tempVelDir = rb.linearVelocity.normalized;
+            var tempVelMagnitude = rb.linearVelocity.magnitude;
+            if (perfectSlideTimer != 0)
+            {
+                var perfectTime = perfectSlideTimer;
+                print(perfectTime);
+                if (perfectTime <= perfectSlideTime)
+                {
+                    tempVelDir = Vector3.ProjectOnPlane(tempVelDir, raycastHit.normal).normalized;
+                    rb.linearVelocity = Vector3.zero;
+                    rb.AddForce(tempVelDir * tempVelMagnitude, ForceMode.Impulse);
+                    perfectTime = 100;
+                }
+                perfectSlideTimer = 0;
+            }
+        }
+        else
+        {
+            slideTime = 0;
+            if(startCheck)
+            {
+                perfectSlideTimer += Time.deltaTime;
+            }
+        }
+        
         
         if(isBoostReady && isGrounded && rb.linearVelocity.magnitude >= 8f)
         {
@@ -243,31 +288,19 @@ public class playerMovement : MonoBehaviour
 
 
         slideTimer = 0;
-        maxRayDistance = slideHeight;
+        maxRayDistance = slideHeight; //maxRayDistance is for ground check
         transform.localScale = new Vector3(transform.localScale.x, slideHeight, transform.localScale.z);
 
-        if (rayDistance <= perfectSlideDistance && rayDistance != 0)
-        {
-            //print(rayDistance);
-            var tempVel = rb.linearVelocity;
-            if (isGrounded)
-            {
-                rb.linearVelocity = Vector3.zero;
-                Vector3 projVel = Vector3.ProjectOnPlane(tempVel, raycastHit.normal).normalized;
-                projVel *= tempVel.magnitude;
-                rb.AddForce(projVel, ForceMode.Impulse);
-                rayDistance = 1;
-                //print("Perfect slide");
-            }
-            
-        }
+        
+        //Change perfect slide to be determined based on the time rather than distance
+        //Like in untitled tag game
         //Implement a perfect slide
         //How it works
         //Slide at the perfect time before hitting the floor, All your momentum gets converted into the slide boost
         //Use a raycast to determine how close the player is to the floor before sliding
     } 
 
-    void SlideTurning()
+    private void SlideTurning()
     {
         //Only do if sliding and on the ground and faster than regular walking speed
         if (!(wantToSlide && isGrounded && rb.linearVelocity.magnitude >= 7.5f))
@@ -349,18 +382,31 @@ public class playerMovement : MonoBehaviour
         SlideCooldown();
         Slide();
         //DashRefill();
+
+        timeSinceLastJump += Time.deltaTime;
+        if (isGrounded && !wantToSlide)
+        {
+            rb.useGravity = false;
+        }
+        else
+        {
+            rb.useGravity = true;
+        }
         
         velocityDebugObject.transform.position = orientation.transform.position + rb.linearVelocity.normalized * 3;
         
         
         speedText.text = Convert.ToString(Mathf.Round(rb.linearVelocity.magnitude * 100) / 100);
+        
+
     }
 
 
     private void FixedUpdate()
     {
-
         SlideTurning();
+        jump();
+        timeSinceLastJump = jumpCooldown;
         rb.AddForce(moveDir * speed, ForceMode.VelocityChange);
     }
 }
