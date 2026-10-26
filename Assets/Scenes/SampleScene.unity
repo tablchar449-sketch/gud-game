@@ -728,6 +728,8 @@ MonoBehaviour:
   ps: {fileID: 67753084}
   acceleration: 6
   originalfov: 80
+  tiltAcceleration: 5
+  tiltDegrees: 90
   dashParticles: {fileID: 1689155820}
 --- !u!1 &167910129
 GameObject:
@@ -831,7 +833,6 @@ GameObject:
   - component: {fileID: 282485310}
   - component: {fileID: 282485309}
   - component: {fileID: 282485308}
-  - component: {fileID: 282485312}
   - component: {fileID: 282485307}
   m_Layer: 0
   m_Name: CinemachineCamera
@@ -985,22 +986,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &282485312
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 282485306}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 44d70cc20219cd84593f67d248eafe36, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineCameraOffset
-  Offset: {x: 1.14, y: 0.21, z: -2.03}
-  ApplyAfter: 1
-  PreserveComposition: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 11}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -1095,7 +1081,7 @@ Transform:
   m_Children:
   - {fileID: 1689155818}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0.75, y: 0, z: 0}
 --- !u!114 &330585547
 MonoBehaviour:
   m_ObjectHideFlags: 0

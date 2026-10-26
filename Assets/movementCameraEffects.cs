@@ -1,4 +1,5 @@
 using Unity.Cinemachine;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,6 +10,8 @@ public class movementCameraEffects : MonoBehaviour
     public playerMovement ps;
     public float acceleration;
     public float originalfov;
+    public float tiltAcceleration;
+    public float tiltDegrees;
     float fov;
     bool doDashEffect;
     
@@ -27,7 +30,39 @@ public class movementCameraEffects : MonoBehaviour
             }
         }
     }
-    
+
+
+    void SlideTurning()
+    {
+        if (!ps.wantToSlide || !ps.isGrounded || !(ps.rb.linearVelocity.magnitude >= 7.5f) || ps.moveInputDirection.x == 0)
+        {
+            cinemachineCamera.Lens.Dutch = Mathf.Lerp(cinemachineCamera.Lens.Dutch, 0, tiltAcceleration * Time.deltaTime);
+            return;
+        }
+        
+
+        var turnDegrees = (ps.turnAngle / 180) * -tiltDegrees;
+        //Right
+        if (ps.moveInputDirection.x > 0 && ps.turnAngle > 0)
+        {
+            turnDegrees = Mathf.Clamp(turnDegrees, -45f, 0f); 
+            cinemachineCamera.Lens.Dutch = Mathf.Lerp(cinemachineCamera.Lens.Dutch, turnDegrees, tiltAcceleration * Time.deltaTime);
+        }
+        //Left
+        if (ps.moveInputDirection.x < 0 && ps.turnAngle < 0)
+        {
+            turnDegrees = Mathf.Clamp(turnDegrees, 0f, 45f); 
+            cinemachineCamera.Lens.Dutch = Mathf.Lerp(cinemachineCamera.Lens.Dutch, turnDegrees, tiltAcceleration * Time.deltaTime);
+        }
+
+        else
+        {
+            cinemachineCamera.Lens.Dutch = Mathf.Lerp(cinemachineCamera.Lens.Dutch, 0, tiltAcceleration * Time.deltaTime);
+        }
+
+
+
+    }
     
     
     void Awake()
@@ -38,6 +73,7 @@ public class movementCameraEffects : MonoBehaviour
 
     void Update()
     {
+        SlideTurning();
         cinemachineCamera.Lens.FieldOfView = fov;
         if (doDashEffect)
         {
