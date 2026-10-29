@@ -681,7 +681,7 @@ MonoBehaviour:
   airSpeed: 0.6
   dragLerpAcceleration: 5
   speedLerpAcceleration: 2.5
-  jumpHeight: 15
+  jumpHeight: 17
   playerCam: {fileID: 330585545}
   groundDrag: 5
   airDrag: 1

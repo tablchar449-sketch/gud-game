@@ -77,16 +77,11 @@ public class movementCameraEffects : MonoBehaviour
         cinemachineCamera.Lens.FieldOfView = fov;
         if (doDashEffect)
         {
-            fov = Mathf.Lerp(fov,originalfov * 1.3f,acceleration * 5 * Time.deltaTime);
-            if(fov >= (originalfov * 1.3f)- 0.1f )
-            {
-                doDashEffect = false;
-                dashParticles.Stop();
-            }
+            fov = originalfov * 1.3f;
+            doDashEffect = false;
+            dashParticles.Stop();
         }
-        else
-        {
-            fov = Mathf.Lerp(fov, originalfov, acceleration * Time.deltaTime);
-        }
+        
+        fov = Mathf.Lerp(fov, originalfov, acceleration * Time.deltaTime);
     }
 }
